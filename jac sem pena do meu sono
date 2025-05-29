@@ -1,0 +1,541 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <conio.h> // Para getch() no Windows
+
+#define MAX_ALUNOS 10
+#define MAX_AVALIACOES 20
+#define MAX_BIMESTRES 3
+#define TAM_SENHA 50
+#define SENHA_PADRAO "142869"
+
+typedef struct {
+    char descricao[100];
+    char data[11]; // Formato DD/MM/AAAA
+} Avaliacao;
+
+typedef struct {
+    int id;
+    char nome[50];
+    int faltas;
+    float notas[MAX_BIMESTRES];
+    float media;
+} Aluno;
+
+// Variáveis globais
+Aluno alunos[MAX_ALUNOS];
+Avaliacao avaliacoes[MAX_AVALIACOES];
+int total_alunos = 0;
+int total_avaliacoes = 0;
+char senha_professor[TAM_SENHA] = SENHA_PADRAO;
+
+// Protótipos de funções
+void limpar_buffer();
+void pausar_tela();
+void cabecalho(const char* titulo);
+int validar_data(const char *data);
+void ler_senha(char *senha, int tamanho);
+int autenticar_professor();
+void calcular_medias();
+void cadastrar_aluno();
+void listar_alunos();
+void pesquisar_aluno();
+void editar_aluno();
+void cadastrar_avaliacao();
+void visualizar_avaliacoes();
+void menu_professor();
+void menu_aluno(int id_aluno);
+void login_aluno();
+void alterar_senha();
+
+int main() {
+    // Inicializa a senha do professor
+    strcpy(senha_professor, SENHA_PADRAO);
+    
+    int opcao;
+    do {
+        system("cls || clear");
+        cabecalho("SISTEMA DE GESTAO ESCOLAR");
+        printf("1. Login Professor\n");
+        printf("2. Login Aluno\n");
+        printf("3. Sobre o Sistema\n");
+        printf("4. Sair\n");
+        printf("\nEscolha: ");
+        scanf("%d", &opcao);
+        limpar_buffer();
+
+        switch(opcao) {
+            case 1: 
+                if (autenticar_professor()) {
+                    menu_professor();
+                }
+                break;
+            case 2: 
+                login_aluno(); 
+                break;
+            case 3:
+                system("cls || clear");
+                cabecalho("SOBRE O SISTEMA");
+                printf("Sistema de Gestao Escolar v1.0\n");
+                printf("Desenvolvido para disciplina de Programacao\n");
+                printf("Funcionalidades:\n");
+                printf("- Cadastro de alunos e notas\n");
+                printf("- Controle de faltas\n");
+                printf("- Agenda de avaliacoes\n");
+                printf("- Feito por: Henrique Coutinho\n");
+                pausar_tela();
+                break;
+            case 4: 
+                printf("\nSaindo do sistema...\n"); 
+                break;
+            default: 
+                printf("\nOpcao invalida!\n");
+                pausar_tela();
+        }
+    } while(opcao != 4);
+
+    return 0;
+}
+
+void limpar_buffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+void pausar_tela() {
+    printf("\nPressione Enter para continuar...");
+    limpar_buffer();
+}
+
+void cabecalho(const char* titulo) {
+    printf("====================================\n");
+    printf("%s\n", titulo);
+    printf("====================================\n\n");
+}
+
+int validar_data(const char *data) {
+    if (strlen(data) != 10) return 0;
+    if (data[2] != '/' || data[5] != '/') return 0;
+    
+    for (int i = 0; i < 10; i++) {
+        if (i == 2 || i == 5) continue;
+        if (!isdigit(data[i])) return 0;
+    }
+    
+    int dia = atoi(data);
+    int mes = atoi(data + 3);
+    
+    if (dia < 1 || dia > 31) return 0;
+    if (mes < 1 || mes > 12) return 0;
+    
+    return 1;
+}
+
+void ler_senha(char *senha, int tamanho) {
+    int i = 0;
+    char ch;
+    
+    while (1) {
+        ch = getch();
+        
+        if (ch == '\r' || ch == '\n') {
+            senha[i] = '\0';
+            break;
+        } else if (ch == '\b' && i > 0) {
+            i--;
+            printf("\b \b");
+        } else if (i < tamanho - 1 && isprint(ch)) {
+            senha[i++] = ch;
+            printf("*");
+        }
+    }
+}
+
+int autenticar_professor() {
+    char senha[TAM_SENHA];
+    int tentativas = 3;
+    
+    while (tentativas > 0) {
+        system("cls || clear");
+        cabecalho("LOGIN PROFESSOR");
+        printf("Tentativas restantes: %d\n", tentativas);
+        printf("Digite a senha: ");
+        ler_senha(senha, TAM_SENHA);
+        
+        if (strcmp(senha, senha_professor) == 0) {
+            return 1;
+        } else {
+            printf("\nSenha incorreta!\n");
+            tentativas--;
+            if (tentativas > 0) {
+                printf("Tente novamente.\n");
+                pausar_tela();
+            }
+        }
+    }
+    
+    printf("\nAcesso negado. Retornando ao menu principal.\n");
+    pausar_tela();
+    return 0;
+}
+
+void calcular_medias() {
+    for (int i = 0; i < total_alunos; i++) {
+        float soma = 0;
+        for (int j = 0; j < MAX_BIMESTRES; j++) {
+            soma += alunos[i].notas[j];
+        }
+        alunos[i].media = soma / MAX_BIMESTRES;
+    }
+}
+
+void cadastrar_aluno() {
+    if (total_alunos >= MAX_ALUNOS) {
+        printf("\nLimite de alunos atingido (maximo: %d)!\n", MAX_ALUNOS);
+        pausar_tela();
+        return;
+    }
+
+    system("cls || clear");
+    cabecalho("CADASTRAR ALUNO");
+    
+    alunos[total_alunos].id = total_alunos + 1;
+    printf("ID do Aluno: %d\n", alunos[total_alunos].id);
+
+    printf("Nome: ");
+    scanf(" %[^\n]", alunos[total_alunos].nome);
+    limpar_buffer();
+
+    printf("Notas (%d bimestres):\n", MAX_BIMESTRES);
+    for (int i = 0; i < MAX_BIMESTRES; i++) {
+        printf("Bimestre %d: ", i+1);
+        scanf("%f", &alunos[total_alunos].notas[i]);
+    }
+    limpar_buffer();
+
+    printf("Faltas: ");
+    scanf("%d", &alunos[total_alunos].faltas);
+    limpar_buffer();
+
+    calcular_medias();
+    total_alunos++;
+    
+    printf("\nAluno cadastrado com sucesso!\n");
+    pausar_tela();
+}
+
+void listar_alunos() {
+    if (total_alunos == 0) {
+        printf("\nNenhum aluno cadastrado!\n");
+        pausar_tela();
+        return;
+    }
+
+    system("cls || clear");
+    cabecalho("LISTA DE ALUNOS");
+    
+    printf("%-5s %-30s %-10s %s\n", "ID", "Nome", "Media", "Faltas");
+    printf("-------------------------------------------------\n");
+    
+    for (int i = 0; i < total_alunos; i++) {
+        printf("%-5d %-30s %-10.1f %d\n", 
+               alunos[i].id, 
+               alunos[i].nome, 
+               alunos[i].media, 
+               alunos[i].faltas);
+    }
+    
+    pausar_tela();
+}
+
+void pesquisar_aluno() {
+    if (total_alunos == 0) {
+        printf("\nNenhum aluno cadastrado!\n");
+        pausar_tela();
+        return;
+    }
+
+    int id_pesquisa;
+    system("cls || clear");
+    cabecalho("PESQUISAR ALUNO");
+    
+    printf("IDs disponiveis: 1 a %d\n", total_alunos);
+    printf("Digite o ID: ");
+    scanf("%d", &id_pesquisa);
+    limpar_buffer();
+
+    for (int i = 0; i < total_alunos; i++) {
+        if (alunos[i].id == id_pesquisa) {
+            system("cls || clear");
+            cabecalho("DADOS DO ALUNO");
+            
+            printf("ID: %d\n", alunos[i].id);
+            printf("Nome: %s\n", alunos[i].nome);
+            printf("Notas:\n");
+            for (int j = 0; j < MAX_BIMESTRES; j++) {
+                printf("Bimestre %d: %.1f\n", j+1, alunos[i].notas[j]);
+            }
+            printf("Media: %.1f\n", alunos[i].media);
+            printf("Faltas: %d\n", alunos[i].faltas);
+            
+            pausar_tela();
+            return;
+        }
+    }
+    
+    printf("\nAluno nao encontrado!\n");
+    pausar_tela();
+}
+
+void editar_aluno() {
+    if (total_alunos == 0) {
+        printf("\nNenhum aluno cadastrado!\n");
+        pausar_tela();
+        return;
+    }
+
+    int id_edicao;
+    system("cls || clear");
+    cabecalho("EDITAR ALUNO");
+    
+    printf("IDs disponiveis: 1 a %d\n", total_alunos);
+    printf("Digite o ID do aluno a editar: ");
+    scanf("%d", &id_edicao);
+    limpar_buffer();
+
+    for (int i = 0; i < total_alunos; i++) {
+        if (alunos[i].id == id_edicao) {
+            system("cls || clear");
+            cabecalho("EDITAR ALUNO");
+            
+            printf("ID: %d\n", alunos[i].id);
+            
+            printf("Nome [%s]: ", alunos[i].nome);
+            char novo_nome[50];
+            scanf(" %[^\n]", novo_nome);
+            limpar_buffer();
+            if (strlen(novo_nome) > 0) {
+                strcpy(alunos[i].nome, novo_nome);
+            }
+            
+            printf("Editar notas? (s/n): ");
+            char opcao = getchar();
+            limpar_buffer();
+            
+            if (opcao == 's' || opcao == 'S') {
+                printf("Notas atuais:\n");
+                for (int j = 0; j < MAX_BIMESTRES; j++) {
+                    printf("Bimestre %d: %.1f\n", j+1, alunos[i].notas[j]);
+                }
+                
+                printf("Nova nota para cada bimestre (ou -1 para manter):\n");
+                for (int j = 0; j < MAX_BIMESTRES; j++) {
+                    printf("Bimestre %d: ", j+1);
+                    float nova_nota;
+                    scanf("%f", &nova_nota);
+                    limpar_buffer();
+                    if (nova_nota >= 0) {
+                        alunos[i].notas[j] = nova_nota;
+                    }
+                }
+            }
+            
+            printf("Faltas [%d]: ", alunos[i].faltas);
+            char faltas_input[10];
+            scanf(" %[^\n]", faltas_input);
+            limpar_buffer();
+            if (strlen(faltas_input) > 0) {
+                alunos[i].faltas = atoi(faltas_input);
+            }
+            
+            calcular_medias();
+            printf("\nDados do aluno atualizados com sucesso!\n");
+            pausar_tela();
+            return;
+        }
+    }
+    
+    printf("\nAluno nao encontrado!\n");
+    pausar_tela();
+}
+
+void cadastrar_avaliacao() {
+    if (total_avaliacoes >= MAX_AVALIACOES) {
+        printf("\nLimite de avaliacoes atingido (maximo: %d)!\n", MAX_AVALIACOES);
+        pausar_tela();
+        return;
+    }
+
+    system("cls || clear");
+    cabecalho("CADASTRAR AVALIACAO");
+    
+    printf("Descricao (ex: Prova de Matematica - 1o Bimestre): ");
+    scanf(" %[^\n]", avaliacoes[total_avaliacoes].descricao);
+    limpar_buffer();
+
+    do {
+        printf("Data (DD/MM/AAAA): ");
+        scanf("%10s", avaliacoes[total_avaliacoes].data);
+        limpar_buffer();
+        
+        if (!validar_data(avaliacoes[total_avaliacoes].data)) {
+            printf("Formato de data invalido! Use DD/MM/AAAA.\n");
+        } else {
+            break;
+        }
+    } while (1);
+
+    total_avaliacoes++;
+    printf("\nAvaliacao cadastrada com sucesso!\n");
+    pausar_tela();
+}
+
+void visualizar_avaliacoes() {
+    if (total_avaliacoes == 0) {
+        printf("\nNenhuma avaliacao cadastrada!\n");
+        pausar_tela();
+        return;
+    }
+
+    system("cls || clear");
+    cabecalho("AVALIACOES CADASTRADAS");
+    
+    printf("%-50s %s\n", "Descricao", "Data");
+    printf("-----------------------------------------------------------\n");
+    
+    for (int i = 0; i < total_avaliacoes; i++) {
+        printf("%-50s %s\n", avaliacoes[i].descricao, avaliacoes[i].data);
+    }
+    
+    pausar_tela();
+}
+
+void alterar_senha() {
+    char nova_senha[TAM_SENHA];
+    char confirmacao[TAM_SENHA];
+    
+    system("cls || clear");
+    cabecalho("ALTERAR SENHA");
+    
+    printf("Digite a nova senha: ");
+    ler_senha(nova_senha, TAM_SENHA);
+    
+    printf("Confirme a nova senha: ");
+    ler_senha(confirmacao, TAM_SENHA);
+    
+    if (strcmp(nova_senha, confirmacao) == 0) {
+        strcpy(senha_professor, nova_senha);
+        printf("\nSenha alterada com sucesso!\n");
+    } else {
+        printf("\nAs senhas nao coincidem! A senha nao foi alterada.\n");
+    }
+    
+    pausar_tela();
+}
+
+void menu_professor() {
+    int opcao;
+    do {
+        system("cls || clear");
+        cabecalho("MENU PROFESSOR");
+        printf("1. Cadastrar Aluno\n");
+        printf("2. Listar Alunos\n");
+        printf("3. Pesquisar Aluno\n");
+        printf("4. Editar Aluno\n");
+        printf("5. Cadastrar Avaliacao\n");
+        printf("6. Visualizar Avaliacoes\n");
+        printf("7. Alterar Senha\n");
+        printf("8. Sair\n");
+        printf("\nEscolha: ");
+        scanf("%d", &opcao);
+        limpar_buffer();
+
+        switch(opcao) {
+            case 1: cadastrar_aluno(); break;
+            case 2: listar_alunos(); break;
+            case 3: pesquisar_aluno(); break;
+            case 4: editar_aluno(); break;
+            case 5: cadastrar_avaliacao(); break;
+            case 6: visualizar_avaliacoes(); break;
+            case 7: alterar_senha(); break;
+            case 8: break;
+            default: 
+                printf("\nOpcao invalida!\n");
+                pausar_tela();
+        }
+    } while(opcao != 8);
+}
+
+void menu_aluno(int id_aluno) {
+    int indice_aluno = -1;
+    
+    // Encontra o aluno pelo ID
+    for (int i = 0; i < total_alunos; i++) {
+        if (alunos[i].id == id_aluno) {
+            indice_aluno = i;
+            break;
+        }
+    }
+
+    if (indice_aluno == -1) {
+        printf("\nID nao encontrado!\n");
+        pausar_tela();
+        return;
+    }
+
+    int opcao;
+    do {
+        system("cls || clear");
+        cabecalho("MENU ALUNO");
+        printf("Bem-vindo, %s (ID: %d)\n", alunos[indice_aluno].nome, alunos[indice_aluno].id);
+        printf("\n1. Ver Meus Dados\n");
+        printf("2. Ver Proximas Avaliacoes\n");
+        printf("3. Sair\n");
+        printf("\nEscolha: ");
+        scanf("%d", &opcao);
+        limpar_buffer();
+
+        switch(opcao) {
+            case 1:
+                system("cls || clear");
+                cabecalho("MEUS DADOS");
+                printf("Nome: %s\n", alunos[indice_aluno].nome);
+                printf("\nNotas:\n");
+                for (int i = 0; i < MAX_BIMESTRES; i++) {
+                    printf("Bimestre %d: %.1f\n", i+1, alunos[indice_aluno].notas[i]);
+                }
+                printf("\nMedia: %.1f\n", alunos[indice_aluno].media);
+                printf("Faltas: %d\n", alunos[indice_aluno].faltas);
+                pausar_tela();
+                break;
+            case 2:
+                visualizar_avaliacoes();
+                break;
+            case 3:
+                break;
+            default:
+                printf("\nOpcao invalida!\n");
+                pausar_tela();
+        }
+    } while(opcao != 3);
+}
+
+void login_aluno() {
+    if (total_alunos == 0) {
+        printf("\nNenhum aluno cadastrado!\n");
+        pausar_tela();
+        return;
+    }
+
+    int id;
+    system("cls || clear");
+    cabecalho("LOGIN ALUNO");
+    
+    printf("IDs disponiveis: 1 a %d\n", total_alunos);
+    printf("Digite seu ID: ");
+    scanf("%d", &id);
+    limpar_buffer();
+
+    menu_aluno(id);
+}
