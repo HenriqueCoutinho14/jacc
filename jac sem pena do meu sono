@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <conio.h> // Para getch() no Windows
+#include <conio.h> 
 
 #define MAX_ALUNOS 10
 #define MAX_AVALIACOES 20
@@ -12,7 +12,7 @@
 
 typedef struct {
     char descricao[100];
-    char data[11]; // Formato DD/MM/AAAA
+    char data[11]; 
 } Avaliacao;
 
 typedef struct {
@@ -23,21 +23,19 @@ typedef struct {
     float media;
 } Aluno;
 
-// Variáveis globais
 Aluno alunos[MAX_ALUNOS];
 Avaliacao avaliacoes[MAX_AVALIACOES];
 int total_alunos = 0;
 int total_avaliacoes = 0;
 char senha_professor[TAM_SENHA] = SENHA_PADRAO;
 
-// Protótipos de funções
 void limpar_buffer();
 void pausar_tela();
 void cabecalho(const char* titulo);
 int validar_data(const char *data);
 void ler_senha(char *senha, int tamanho);
 int autenticar_professor();
-void calcular_medias();
+void calcular_media_aluno(Aluno *aluno);
 void cadastrar_aluno();
 void listar_alunos();
 void pesquisar_aluno();
@@ -50,7 +48,6 @@ void login_aluno();
 void alterar_senha();
 
 int main() {
-    // Inicializa a senha do professor
     strcpy(senha_professor, SENHA_PADRAO);
     
     int opcao;
@@ -78,7 +75,7 @@ int main() {
                 system("cls || clear");
                 cabecalho("SOBRE O SISTEMA");
                 printf("Sistema de Gestao Escolar v1.0\n");
-                printf("Desenvolvido para disciplina de Programacao\n");
+                printf("Desenvolvido para ganhar nota\n");
                 printf("Funcionalidades:\n");
                 printf("- Cadastro de alunos e notas\n");
                 printf("- Controle de faltas\n");
@@ -180,14 +177,12 @@ int autenticar_professor() {
     return 0;
 }
 
-void calcular_medias() {
-    for (int i = 0; i < total_alunos; i++) {
-        float soma = 0;
-        for (int j = 0; j < MAX_BIMESTRES; j++) {
-            soma += alunos[i].notas[j];
-        }
-        alunos[i].media = soma / MAX_BIMESTRES;
+void calcular_media_aluno(Aluno *aluno) {
+    float soma = 0;
+    for (int i = 0; i < MAX_BIMESTRES; i++) {
+        soma += aluno->notas[i];
     }
+    aluno->media = soma / MAX_BIMESTRES;
 }
 
 void cadastrar_aluno() {
@@ -218,7 +213,7 @@ void cadastrar_aluno() {
     scanf("%d", &alunos[total_alunos].faltas);
     limpar_buffer();
 
-    calcular_medias();
+    calcular_media_aluno(&alunos[total_alunos]);
     total_alunos++;
     
     printf("\nAluno cadastrado com sucesso!\n");
@@ -349,7 +344,7 @@ void editar_aluno() {
                 alunos[i].faltas = atoi(faltas_input);
             }
             
-            calcular_medias();
+            calcular_media_aluno(&alunos[i]);
             printf("\nDados do aluno atualizados com sucesso!\n");
             pausar_tela();
             return;
@@ -470,7 +465,6 @@ void menu_professor() {
 void menu_aluno(int id_aluno) {
     int indice_aluno = -1;
     
-    // Encontra o aluno pelo ID
     for (int i = 0; i < total_alunos; i++) {
         if (alunos[i].id == id_aluno) {
             indice_aluno = i;
